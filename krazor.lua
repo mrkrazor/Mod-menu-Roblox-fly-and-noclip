@@ -4,7 +4,7 @@ local UserInputService = game:GetService("UserInputService")
 local lPlayer = Players.LocalPlayer
 local workspace = game:GetService("Workspace")
 
--- Обхід детекту GUI
+-- Захист від детекту GUI
 local screenGui = Instance.new("ScreenGui", lPlayer:WaitForChild("PlayerGui"))
 screenGui.Name = "KrazorCore_" .. math.random(1000, 9999)
 screenGui.ResetOnSpawn = false
@@ -16,7 +16,7 @@ local function roundCorners(instance, radius)
 end
 
 ---------------------------------------------------------
--- ІНТЕРФЕЙС (ЗАКРУГЛЕНІ КУТИ)
+-- ІНТЕРФЕЙС (ЗАКРУГЛЕНІ КУТИ ТА ЧИСТИЙ ТИТУЛ)
 ---------------------------------------------------------
 local mainFrame = Instance.new("Frame", screenGui)
 mainFrame.Size = UDim2.new(0, 200, 0, 275)
@@ -39,10 +39,11 @@ topBarMask.Position = UDim2.new(0, 0, 1, -10)
 topBarMask.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 topBarMask.BorderSizePixel = 0
 
+-- Оновлений чистий титул за твоїм проханням
 local title = Instance.new("TextLabel", topBar)
 title.Size = UDim2.new(1, -10, 1, 0)
 title.Position = UDim2.new(0, 10, 0, 0)
-title.Text = "KRAZOR // FLY_NOCLIP"
+title.Text = "Fly and noclip"
 title.TextColor3 = Color3.fromRGB(220, 220, 220)
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Font = Enum.Font.Code
@@ -50,7 +51,7 @@ title.TextSize = 13
 title.BackgroundTransparency = 1
 
 ---------------------------------------------------------
--- НАЛАШТУВАННЯ
+-- НАЛАШТУВАННЯ ТА КНОПКИ
 ---------------------------------------------------------
 local flying = false
 local noclip = false
@@ -130,12 +131,21 @@ mobileDown.Font = Enum.Font.Code
 mobileDown.TextSize = 13
 roundCorners(mobileDown, 6)
 
+local infoLabel = Instance.new("TextLabel", mainFrame)
+infoLabel.Size = UDim2.new(1, 0, 0, 20)
+infoLabel.Position = UDim2.new(0, 0, 0.84, 0)
+infoLabel.Text = "CONTROLS: WASD / JOYSTICK"
+infoLabel.TextColor3 = Color3.fromRGB(90, 90, 90)
+infoLabel.Font = Enum.Font.Code
+infoLabel.TextSize = 10
+infoLabel.BackgroundTransparency = 1
+
 ---------------------------------------------------------
--- ФІЗИКА ПОЛЬОТУ ТА УПРАВЛІННЯ
+-- ЛОГІКА CFRAME ПОЛЬОТУ ЗА КАМЕРОЮ
 ---------------------------------------------------------
 
 speedUp.MouseButton1Click:Connect(function()
-    flySpeed = math.min(flySpeed + 10, 300)
+    flySpeed = math.min(flySpeed + 10, 500)
     speedLabel.Text = "SPEED: " .. flySpeed
 end)
 
@@ -144,7 +154,6 @@ speedDown.MouseButton1Click:Connect(function()
     speedLabel.Text = "SPEED: " .. flySpeed
 end)
 
--- Обробка клавіш ПК
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.E then upPressed = true end
@@ -155,7 +164,6 @@ UserInputService.InputEnded:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.Q then downPressed = false end
 end)
 
--- Обробка мобільних кнопок
 mobileUp.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then upPressed = true end
 end)
@@ -187,54 +195,33 @@ noclipBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- НАДІЙНИЙ ФЛАЙ ЧЕРЕЗ СКЛАДАННЯ ВЕКТОРІВ (WASD + Звичайна поза)
-local bVelocity, bGyro
-
-RunService.RenderStepped:Connect(function()
+-- Рендер польоту
+RunService.RenderStepped:Connect(function(dt)
     if flying and lPlayer.Character and lPlayer.Character:FindFirstChild("HumanoidRootPart") then
         local hrp = lPlayer.Character.HumanoidRootPart
         local humanoid = lPlayer.Character:FindFirstChildOfClass("Humanoid")
         local camera = workspace.CurrentCamera
         
         if humanoid and camera then
-            -- Створюємо об'єкти фізики, якщо їх ще немає (щоб утримувати позу idle)
-            if not bVelocity then
-                bVelocity = Instance.new("BodyVelocity")
-                bVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-                bVelocity.Velocity = Vector3.new(0, 0, 0)
-                bVelocity.Parent = hrp
-            end
-            if not bGyro then
-                bGyro = Instance.new("BodyGyro")
-                bGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
-                -- Утримуємо персонажа рівно, дивимось куди й камера, але без нахилу самого тіла
-                bGyro.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + camera.CFrame.LookVector)
-                bGyro.Parent = hrp
-            end
+            hrp.Velocity = Vector3.new(0, 0, 0)
             
-            -- Вираховуємо напрямок від кнопок WASD чи мобільного джойстика
             local moveDirection = humanoid.MoveDirection
-            local finalVelocity = Vector3.new(0, 0, 0)
+            local displacement = Vector3.new(0, 0, 0)
             
             if moveDirection.Magnitude > 0 then
-                -- Спрямовуємо рух WASD чітко за вектором погляду камери (включаючи верх і вниз)
                 local cameraCFrame = camera.CFrame
+                local lookVector = cameraCFrame.LookVector
+                local rightVector = cameraCFrame.RightVector
                 local localMove = cameraCFrame:VectorToObjectSpace(moveDirection)
-                finalVelocity = (cameraCFrame.LookVector * -localMove.Z + cameraCFrame.RightVector * localMove.X).Unit * flySpeed
+                
+                displacement = (lookVector * -localMove.Z + rightVector * localMove.X).Unit * flySpeed * dt
             end
             
-            -- Додаємо вертикальні кнопки
-            if upPressed then finalVelocity = finalVelocity + Vector3.new(0, flySpeed, 0) end
-            if downPressed then finalVelocity = finalVelocity + Vector3.new(0, -flySpeed, 0) end
+            if upPressed then displacement = displacement + Vector3.new(0, flySpeed * dt, 0) end
+            if downPressed then displacement = displacement + Vector3.new(0, -flySpeed * dt, 0) end
             
-            -- Задаємо швидкість. Якщо нічого не натиснуто — вона 0, і персонаж просто зависає в нормальній позі
-            bVelocity.Velocity = finalVelocity
-            bGyro.CFrame = CFrame.new(hrp.Position, hrp.Position + camera.CFrame.LookVector)
+            hrp.CFrame = CFrame.new(hrp.Position + displacement) * CFrame.Angles(0, math.atan2(-camera.CFrame.LookVector.X, -camera.CFrame.LookVector.Z), 0)
         end
-    else
-        -- Якщо флай вимкнено, видаляємо об'єкти, щоб повернути нормальну гравітацію
-        if bVelocity then bVelocity:Destroy() bVelocity = nil end
-        if bGyro then bGyro:Destroy() bGyro = nil end
     end
 end)
 
@@ -244,5 +231,8 @@ flyBtn.MouseButton1Click:Connect(function()
         flyBtn.Text = "FLY: ACTIVE"; flyBtn.TextColor3 = Color3.fromRGB(50, 180, 50)
     else
         flyBtn.Text = "FLY: OFF"; flyBtn.TextColor3 = Color3.fromRGB(180, 50, 50)
+        if lPlayer.Character and lPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            lPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+        end
     end
 end)
