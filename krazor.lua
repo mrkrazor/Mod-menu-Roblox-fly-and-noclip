@@ -4,12 +4,11 @@ local UserInputService = game:GetService("UserInputService")
 local lPlayer = Players.LocalPlayer
 local workspace = game:GetService("Workspace")
 
--- Захист від простого детекту за назвою GUI
+-- Обхід детекту GUI
 local screenGui = Instance.new("ScreenGui", lPlayer:WaitForChild("PlayerGui"))
 screenGui.Name = "KrazorCore_" .. math.random(1000, 9999)
 screenGui.ResetOnSpawn = false
 
--- Функція для закруглення кутів
 local function roundCorners(instance, radius)
     local uiCorner = Instance.new("UICorner")
     uiCorner.CornerRadius = UDim.new(0, radius)
@@ -17,7 +16,7 @@ local function roundCorners(instance, radius)
 end
 
 ---------------------------------------------------------
--- СТИЛЬНИЙ ІНТЕРФЕЙС ІЗ ЗАКРУГЛЕНИМИ КУТАМИ
+-- ІНТЕРФЕЙС (ЗАКРУГЛЕНІ КУТИ)
 ---------------------------------------------------------
 local mainFrame = Instance.new("Frame", screenGui)
 mainFrame.Size = UDim2.new(0, 200, 0, 275)
@@ -28,7 +27,6 @@ mainFrame.Active = true
 mainFrame.Draggable = true
 roundCorners(mainFrame, 12)
 
--- Топ-бар
 local topBar = Instance.new("Frame", mainFrame)
 topBar.Size = UDim2.new(1, 0, 0, 30)
 topBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
@@ -44,7 +42,7 @@ topBarMask.BorderSizePixel = 0
 local title = Instance.new("TextLabel", topBar)
 title.Size = UDim2.new(1, -10, 1, 0)
 title.Position = UDim2.new(0, 10, 0, 0)
-title.Text = "KRAZOR // AUTO_FLY v4.0"
+title.Text = "KRAZOR // FLY_NOCLIP"
 title.TextColor3 = Color3.fromRGB(220, 220, 220)
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Font = Enum.Font.Code
@@ -52,11 +50,11 @@ title.TextSize = 13
 title.BackgroundTransparency = 1
 
 ---------------------------------------------------------
--- НАЛАШТУВАННЯ ТА КНОПКИ
+-- НАЛАШТУВАННЯ
 ---------------------------------------------------------
 local flying = false
 local noclip = false
-local flySpeed = 50 -- Базова швидкість
+local flySpeed = 50
 
 local upPressed = false
 local downPressed = false
@@ -70,7 +68,6 @@ flyBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 flyBtn.TextColor3 = Color3.fromRGB(180, 50, 50)
 flyBtn.Font = Enum.Font.Code
 flyBtn.TextSize = 13
-flyBtn.BorderSizePixel = 0
 roundCorners(flyBtn, 6)
 
 -- КНОПКА: NOCLIP
@@ -82,10 +79,8 @@ noclipBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 noclipBtn.TextColor3 = Color3.fromRGB(180, 50, 50)
 noclipBtn.Font = Enum.Font.Code
 noclipBtn.TextSize = 13
-noclipBtn.BorderSizePixel = 0
 roundCorners(noclipBtn, 6)
 
--- ТЕКСТ ШВИДКОСТІ
 local speedLabel = Instance.new("TextLabel", mainFrame)
 speedLabel.Size = UDim2.new(0.9, 0, 0, 20)
 speedLabel.Position = UDim2.new(0.05, 0, 0.43, 0)
@@ -95,7 +90,6 @@ speedLabel.Font = Enum.Font.Code
 speedLabel.TextSize = 13
 speedLabel.BackgroundTransparency = 1
 
--- КНОПКИ ЗМІНИ ШВИДКОСТІ
 local speedDown = Instance.new("TextButton", mainFrame)
 speedDown.Size = UDim2.new(0.42, 0, 0, 30)
 speedDown.Position = UDim2.new(0.05, 0, 0.52, 0)
@@ -104,7 +98,6 @@ speedDown.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
 speedDown.TextColor3 = Color3.fromRGB(200, 200, 200)
 speedDown.Font = Enum.Font.Code
 speedDown.TextSize = 12
-speedDown.BorderSizePixel = 0
 roundCorners(speedDown, 6)
 
 local speedUp = Instance.new("TextButton", mainFrame)
@@ -115,10 +108,8 @@ speedUp.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
 speedUp.TextColor3 = Color3.fromRGB(200, 200, 200)
 speedUp.Font = Enum.Font.Code
 speedUp.TextSize = 12
-speedUp.BorderSizePixel = 0
 roundCorners(speedUp, 6)
 
--- КНОПКИ РУЧНОГО КОРЕГУВАННЯ ВИСОТИ
 local mobileUp = Instance.new("TextButton", mainFrame)
 mobileUp.Size = UDim2.new(0.42, 0, 0, 38)
 mobileUp.Position = UDim2.new(0.05, 0, 0.67, 0)
@@ -127,7 +118,6 @@ mobileUp.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
 mobileUp.TextColor3 = Color3.fromRGB(220, 220, 220)
 mobileUp.Font = Enum.Font.Code
 mobileUp.TextSize = 13
-mobileUp.BorderSizePixel = 0
 roundCorners(mobileUp, 6)
 
 local mobileDown = Instance.new("TextButton", mainFrame)
@@ -138,26 +128,14 @@ mobileDown.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
 mobileDown.TextColor3 = Color3.fromRGB(220, 220, 220)
 mobileDown.Font = Enum.Font.Code
 mobileDown.TextSize = 13
-mobileDown.BorderSizePixel = 0
 roundCorners(mobileDown, 6)
 
--- ПІДКАЗКА
-local infoLabel = Instance.new("TextLabel", mainFrame)
-infoLabel.Size = UDim2.new(1, 0, 0, 20)
-infoLabel.Position = UDim2.new(0, 0, 0.84, 0)
-infoLabel.Text = "PC KEYBINDS: [E] UP / [Q] DOWN"
-infoLabel.TextColor3 = Color3.fromRGB(90, 90, 90)
-infoLabel.Font = Enum.Font.Code
-infoLabel.TextSize = 10
-infoLabel.BackgroundTransparency = 1
-
 ---------------------------------------------------------
--- УЛЬТИМАТИВНА ЛОГІКА АВТО-ПОЛЬОТУ
+-- ФІЗИКА ПОЛЬОТУ ТА УПРАВЛІННЯ
 ---------------------------------------------------------
 
--- Регулювання швидкості
 speedUp.MouseButton1Click:Connect(function()
-    flySpeed = math.min(flySpeed + 10, 300) -- Збільшив ліміт швидкості для симуляторів
+    flySpeed = math.min(flySpeed + 10, 300)
     speedLabel.Text = "SPEED: " .. flySpeed
 end)
 
@@ -166,26 +144,24 @@ speedDown.MouseButton1Click:Connect(function()
     speedLabel.Text = "SPEED: " .. flySpeed
 end)
 
--- Клавіатура (ПК / Ноутбук)
+-- Обробка клавіш ПК
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.E then upPressed = true end
     if input.KeyCode == Enum.KeyCode.Q then downPressed = true end
 end)
-
 UserInputService.InputEnded:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.E then upPressed = false end
     if input.KeyCode == Enum.KeyCode.Q then downPressed = false end
 end)
 
--- Екранні кнопки висоти
+-- Обробка мобільних кнопок
 mobileUp.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then upPressed = true end
 end)
 mobileUp.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then upPressed = false end
 end)
-
 mobileDown.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then downPressed = true end
 end)
@@ -193,7 +169,7 @@ mobileDown.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then downPressed = false end
 end)
 
--- Логіка NOCLIP
+-- Ноукліп
 RunService.Stepped:Connect(function()
     if noclip and lPlayer.Character then
         for _, part in pairs(lPlayer.Character:GetDescendants()) do
@@ -211,25 +187,54 @@ noclipBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- 🔥 АВТО-ПОЛІТ ЗА КАМЕРОЮ (ЯК НА ВІДЕО)
-RunService.RenderStepped:Connect(function(dt)
+-- НАДІЙНИЙ ФЛАЙ ЧЕРЕЗ СКЛАДАННЯ ВЕКТОРІВ (WASD + Звичайна поза)
+local bVelocity, bGyro
+
+RunService.RenderStepped:Connect(function()
     if flying and lPlayer.Character and lPlayer.Character:FindFirstChild("HumanoidRootPart") then
         local hrp = lPlayer.Character.HumanoidRootPart
+        local humanoid = lPlayer.Character:FindFirstChildOfClass("Humanoid")
         local camera = workspace.CurrentCamera
         
-        if camera then
-            hrp.Velocity = Vector3.new(0, 0, 0) -- Обхід античиту швидкості
+        if humanoid and camera then
+            -- Створюємо об'єкти фізики, якщо їх ще немає (щоб утримувати позу idle)
+            if not bVelocity then
+                bVelocity = Instance.new("BodyVelocity")
+                bVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+                bVelocity.Velocity = Vector3.new(0, 0, 0)
+                bVelocity.Parent = hrp
+            end
+            if not bGyro then
+                bGyro = Instance.new("BodyGyro")
+                bGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+                -- Утримуємо персонажа рівно, дивимось куди й камера, але без нахилу самого тіла
+                bGyro.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + camera.CFrame.LookVector)
+                bGyro.Parent = hrp
+            end
             
-            -- Персонаж летить вперед АВТОМАТИЧНО у напрямку камери
-            local forwardVector = camera.CFrame.LookVector
-            local displacement = forwardVector * flySpeed * dt
+            -- Вираховуємо напрямок від кнопок WASD чи мобільного джойстика
+            local moveDirection = humanoid.MoveDirection
+            local finalVelocity = Vector3.new(0, 0, 0)
             
-            -- Додаткове ручне зміщення вгору/вниз кнопками, якщо треба скоригувати політ
-            if upPressed then displacement = displacement + Vector3.new(0, flySpeed * dt, 0) end
-            if downPressed then displacement = displacement + Vector3.new(0, -flySpeed * dt, 0) end
+            if moveDirection.Magnitude > 0 then
+                -- Спрямовуємо рух WASD чітко за вектором погляду камери (включаючи верх і вниз)
+                local cameraCFrame = camera.CFrame
+                local localMove = cameraCFrame:VectorToObjectSpace(moveDirection)
+                finalVelocity = (cameraCFrame.LookVector * -localMove.Z + cameraCFrame.RightVector * localMove.X).Unit * flySpeed
+            end
             
-            hrp.CFrame = hrp.CFrame + displacement
+            -- Додаємо вертикальні кнопки
+            if upPressed then finalVelocity = finalVelocity + Vector3.new(0, flySpeed, 0) end
+            if downPressed then finalVelocity = finalVelocity + Vector3.new(0, -flySpeed, 0) end
+            
+            -- Задаємо швидкість. Якщо нічого не натиснуто — вона 0, і персонаж просто зависає в нормальній позі
+            bVelocity.Velocity = finalVelocity
+            bGyro.CFrame = CFrame.new(hrp.Position, hrp.Position + camera.CFrame.LookVector)
         end
+    else
+        -- Якщо флай вимкнено, видаляємо об'єкти, щоб повернути нормальну гравітацію
+        if bVelocity then bVelocity:Destroy() bVelocity = nil end
+        if bGyro then bGyro:Destroy() bGyro = nil end
     end
 end)
 
@@ -239,8 +244,5 @@ flyBtn.MouseButton1Click:Connect(function()
         flyBtn.Text = "FLY: ACTIVE"; flyBtn.TextColor3 = Color3.fromRGB(50, 180, 50)
     else
         flyBtn.Text = "FLY: OFF"; flyBtn.TextColor3 = Color3.fromRGB(180, 50, 50)
-        if lPlayer.Character and lPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            lPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
-        end
     end
 end)
