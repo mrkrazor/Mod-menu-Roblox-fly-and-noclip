@@ -15,7 +15,7 @@ local function roundCorners(instance, radius)
 end
 
 ---------------------------------------------------------
--- ІНТЕРФЕЙС (Fly and noclip)
+-- ІНТЕРФЕЙС
 ---------------------------------------------------------
 local mainFrame = Instance.new("Frame", screenGui)
 mainFrame.Size = UDim2.new(0, 200, 0, 275)
@@ -41,7 +41,7 @@ topBarMask.BorderSizePixel = 0
 local title = Instance.new("TextLabel", topBar)
 title.Size = UDim2.new(1, -10, 1, 0)
 title.Position = UDim2.new(0, 10, 0, 0)
-title.Text = "Fly and noclip"
+title.Text = "FLY AND NOCLIP"
 title.TextColor3 = Color3.fromRGB(220, 220, 220)
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Font = Enum.Font.Code
@@ -49,7 +49,7 @@ title.TextSize = 13
 title.BackgroundTransparency = 1
 
 ---------------------------------------------------------
--- КНОПКИ КЕРУВАННЯ
+-- НАЛАШТУВАННЯ
 ---------------------------------------------------------
 local flying = false
 local noclip = false
@@ -128,9 +128,8 @@ mobileDown.TextSize = 13
 roundCorners(mobileDown, 6)
 
 ---------------------------------------------------------
--- ОНОВЛЕНА ФІЗИКА (ЗАСТИГАННЯ В ПОВІТРІ ЯК НА ВІДЕО)
+-- ДИЗАЙНЕРСЬКИЙ CFRAME-ПОЛІТ БЕЗ ПАДІНЬ ТА З ПОЗОЮ IDLE
 ---------------------------------------------------------
-local bVelocity, bGyro
 
 speedUp.MouseButton1Click:Connect(function()
     flySpeed = math.min(flySpeed + 10, 500)
@@ -165,9 +164,9 @@ mobileDown.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then downPressed = false end
 end)
 
--- Ноукліп логіка
+-- Ноукліп (обов'язковий для флай-моду)
 RunService.Stepped:Connect(function()
-    if noclip and lPlayer.Character then
+    if (flying or noclip) and lPlayer.Character then
         for _, part in pairs(lPlayer.Character:GetDescendants()) do
             if part:IsA("BasePart") then part.CanCollide = false end
         end
@@ -183,57 +182,38 @@ noclipBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Рендер польоту через примусову стабілізацію векторів
-RunService.RenderStepped:Connect(function()
+-- Жорсткий рендер позиції без падінь
+RunService.RenderStepped:Connect(function(dt)
     if flying and lPlayer.Character and lPlayer.Character:FindFirstChild("HumanoidRootPart") then
         local hrp = lPlayer.Character.HumanoidRootPart
         local humanoid = lPlayer.Character:FindFirstChildOfClass("Humanoid")
         local camera = workspace.CurrentCamera
         
         if humanoid and camera then
-            -- Створюємо об'єкти підтримки, які блокують падіння гравітації
-            if not bVelocity then
-                bVelocity = Instance.new("BodyVelocity")
-                bVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9) -- Потужна сила утримання
-                bVelocity.Velocity = Vector3.new(0, 0, 0)
-                bVelocity.Parent = hrp
-            end
-            if not bGyro then
-                bGyro = Instance.new("BodyGyro")
-                bGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-                bGyro.CFrame = hrp.CFrame
-                bGyro.Parent = hrp
-            end
-            
-            -- Примусово ставимо персонажа у стоячу стійку
-            humanoid.PlatformStand = true 
+            -- Жорстко обнуляємо гравітаційну швидкість кожну частку секунди
+            hrp.Velocity = Vector3.new(0, 0, 0)
             
             local moveDirection = humanoid.MoveDirection
-            local finalVelocity = Vector3.new(0, 0, 0)
+            local displacement = Vector3.new(0, 0, 0)
             
-            -- Рух тільки якщо тиснеш WASD чи смикаєш джойстик
+            -- Летимо ТІЛЬКИ коли є вектор руху від WASD/джойстика
             if moveDirection.Magnitude > 0 then
                 local cameraCFrame = camera.CFrame
                 local localMove = cameraCFrame:VectorToObjectSpace(moveDirection)
                 
-                -- Рахуємо напрямок руху чітко за нахилом камери
-                finalVelocity = (cameraCFrame.LookVector * -localMove.Z + cameraCFrame.RightVector * localMove.X).Unit * flySpeed
+                -- Напрямок польоту ідеально за нахилом камери
+                displacement = (cameraCFrame.LookVector * -localMove.Z + cameraCFrame.RightVector * localMove.X).Unit * flySpeed * dt
             end
             
-            -- Вертикальне зміщення
-            if upPressed then finalVelocity = finalVelocity + Vector3.new(0, flySpeed, 0) end
-            if downPressed then finalVelocity = finalVelocity + Vector3.new(0, -flySpeed, 0) end
+            -- Кнопки висоти
+            if upPressed then displacement = displacement + Vector3.new(0, flySpeed * dt, 0) end
+            if downPressed then displacement = displacement + Vector3.new(0, -flySpeed * dt, 0) end
             
-            -- Оновлюємо фізичні параметри
-            bVelocity.Velocity = finalVelocity
-            bGyro.CFrame = CFrame.new(hrp.Position, hrp.Position + camera.CFrame.LookVector)
-        end
-    else
-        -- Повертаємо звичайний стан при відключенні
-        if bVelocity then bVelocity:Destroy() bVelocity = nil end
-        if bGyro then bGyro:Destroy() bGyro = nil end
-        if lPlayer.Character and lPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            lPlayer.Character:FindFirstChildOfClass("Humanoid").PlatformStand = false
+            -- Переміщуємо CFrame. Залишаємо кут нахилу тіла рівним (щоб персонаж стояв вертикально)
+            local targetRotation = camera.CFrame.Rotation
+            local _, yAngle, _ = targetRotation:ToEulerAnglesYXZ()
+            
+            hrp.CFrame = CFrame.new(hrp.Position + displacement) * CFrame.Angles(0, yAngle, 0)
         end
     end
 end)
@@ -244,5 +224,8 @@ flyBtn.MouseButton1Click:Connect(function()
         flyBtn.Text = "FLY: ACTIVE"; flyBtn.TextColor3 = Color3.fromRGB(50, 180, 50)
     else
         flyBtn.Text = "FLY: OFF"; flyBtn.TextColor3 = Color3.fromRGB(180, 50, 50)
+        if lPlayer.Character and lPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            lPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+        end
     end
 end)
