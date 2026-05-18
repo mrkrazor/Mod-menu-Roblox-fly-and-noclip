@@ -9,7 +9,7 @@ local screenGui = Instance.new("ScreenGui", lPlayer:WaitForChild("PlayerGui"))
 screenGui.Name = "KrazorCore_" .. math.random(1000, 9999)
 screenGui.ResetOnSpawn = false
 
--- Функція для швидкого закруглення кутів
+-- Функція для закруглення кутів
 local function roundCorners(instance, radius)
     local uiCorner = Instance.new("UICorner")
     uiCorner.CornerRadius = UDim.new(0, radius)
@@ -23,10 +23,10 @@ local mainFrame = Instance.new("Frame", screenGui)
 mainFrame.Size = UDim2.new(0, 200, 0, 275)
 mainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-mainFrame.BorderSizePixel = 0 -- Прибираємо гостру рамку
+mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
 mainFrame.Draggable = true
-roundCorners(mainFrame, 12) -- Плавні кути головного меню
+roundCorners(mainFrame, 12)
 
 -- Топ-бар
 local topBar = Instance.new("Frame", mainFrame)
@@ -35,7 +35,6 @@ topBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 topBar.BorderSizePixel = 0
 roundCorners(topBar, 12)
 
--- Маскуємо нижні кути топ-бару, щоб вони не вилазили
 local topBarMask = Instance.new("Frame", topBar)
 topBarMask.Size = UDim2.new(1, 0, 0, 10)
 topBarMask.Position = UDim2.new(0, 0, 1, -10)
@@ -45,7 +44,7 @@ topBarMask.BorderSizePixel = 0
 local title = Instance.new("TextLabel", topBar)
 title.Size = UDim2.new(1, -10, 1, 0)
 title.Position = UDim2.new(0, 10, 0, 0)
-title.Text = "KRAZOR // CORE v3.8"
+title.Text = "KRAZOR // AUTO_FLY v4.0"
 title.TextColor3 = Color3.fromRGB(220, 220, 220)
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Font = Enum.Font.Code
@@ -57,7 +56,7 @@ title.BackgroundTransparency = 1
 ---------------------------------------------------------
 local flying = false
 local noclip = false
-local flySpeed = 50
+local flySpeed = 50 -- Базова швидкість
 
 local upPressed = false
 local downPressed = false
@@ -119,7 +118,7 @@ speedUp.TextSize = 12
 speedUp.BorderSizePixel = 0
 roundCorners(speedUp, 6)
 
--- КНОПКИ ВИСОТИ UP/DOWN
+-- КНОПКИ РУЧНОГО КОРЕГУВАННЯ ВИСОТИ
 local mobileUp = Instance.new("TextButton", mainFrame)
 mobileUp.Size = UDim2.new(0.42, 0, 0, 38)
 mobileUp.Position = UDim2.new(0.05, 0, 0.67, 0)
@@ -153,12 +152,12 @@ infoLabel.TextSize = 10
 infoLabel.BackgroundTransparency = 1
 
 ---------------------------------------------------------
--- НАДІЙНА КРОСПЛАТФОРМНА ЛОГІКА (BYPASS)
+-- УЛЬТИМАТИВНА ЛОГІКА АВТО-ПОЛЬОТУ
 ---------------------------------------------------------
 
--- Швидкість
+-- Регулювання швидкості
 speedUp.MouseButton1Click:Connect(function()
-    flySpeed = math.min(flySpeed + 10, 150)
+    flySpeed = math.min(flySpeed + 10, 300) -- Збільшив ліміт швидкості для симуляторів
     speedLabel.Text = "SPEED: " .. flySpeed
 end)
 
@@ -179,7 +178,7 @@ UserInputService.InputEnded:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.Q then downPressed = false end
 end)
 
--- Екранні кнопки (Мобільні / Кліки мишкою)
+-- Екранні кнопки висоти
 mobileUp.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then upPressed = true end
 end)
@@ -212,39 +211,23 @@ noclipBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- 🔥 НОВИЙ НАДІЙНИЙ ФЛАЙ (ЛЕТИШ ТУДИ, КУДИ ДИВИТЬСЯ КАМЕРА)
+-- 🔥 АВТО-ПОЛІТ ЗА КАМЕРОЮ (ЯК НА ВІДЕО)
 RunService.RenderStepped:Connect(function(dt)
     if flying and lPlayer.Character and lPlayer.Character:FindFirstChild("HumanoidRootPart") then
         local hrp = lPlayer.Character.HumanoidRootPart
-        local humanoid = lPlayer.Character:FindFirstChildOfClass("Humanoid")
         local camera = workspace.CurrentCamera
         
-        if humanoid and camera then
-            hrp.Velocity = Vector3.new(0, 0, 0) -- Обхід античиту
+        if camera then
+            hrp.Velocity = Vector3.new(0, 0, 0) -- Обхід античиту швидкості
             
-            local moveDirection = humanoid.MoveDirection
-            local displacement = Vector3.new(0, 0, 0)
+            -- Персонаж летить вперед АВТОМАТИЧНО у напрямку камери
+            local forwardVector = camera.CFrame.LookVector
+            local displacement = forwardVector * flySpeed * dt
             
-            -- Якщо гравець кудись іде (клавіші WASD або мобільний джойстик)
-            if moveDirection.Magnitude > 0 then
-                -- Вираховуємо напрямок руху ВІДНОСНО КАМЕРИ, включаючи нахил вгору/вниз
-                local cameraCFrame = camera.CFrame
-                local forwardVector = cameraCFrame.LookVector
-                local rightVector = cameraCFrame.RightVector
-                
-                -- Перетворюємо плоский рух humanoid у тривимірний політ за камерою
-                -- Отримуємо відносні команди натискання (вперед/назад, вліво/вправо)
-                local localMove = cameraCFrame:VectorToObjectSpace(moveDirection)
-                
-                -- Рахуємо фінальний вектор польоту
-                displacement = (forwardVector * -localMove.Z + rightVector * localMove.X).Unit * flySpeed * dt
-            end
-            
-            -- Додатковий підйом та спуск строго по вертикалі (кнопки або E/Q)
+            -- Додаткове ручне зміщення вгору/вниз кнопками, якщо треба скоригувати політ
             if upPressed then displacement = displacement + Vector3.new(0, flySpeed * dt, 0) end
             if downPressed then displacement = displacement + Vector3.new(0, -flySpeed * dt, 0) end
             
-            -- Оновлюємо позицію гравця в просторі
             hrp.CFrame = hrp.CFrame + displacement
         end
     end
