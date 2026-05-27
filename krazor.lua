@@ -240,7 +240,15 @@ RunService.RenderStepped:Connect(function()
             local lookAt = camera.CFrame.LookVector
             bodyGyro.CFrame = CFrame.new(hrp.Position, Vector3.new(hrp.Position.X + lookAt.X, hrp.Position.Y, hrp.Position.Z + lookAt.Z))
         end
+    end
+end)
+
+flyBtn.MouseButton1Click:Connect(function()
+    flying = not flying
+    if flying then
+        flyBtn.Text = "FLY: ACTIVE" flyBtn.TextColor3 = Color3.fromRGB(60, 200, 60)
     else
+        flyBtn.Text = "FLY: OFF" flyBtn.TextColor3 = Color3.fromRGB(200, 60, 60)
         if bodyVelocity then bodyVelocity:Destroy() bodyVelocity = nil end
         if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
         if lPlayer.Character and lPlayer.Character:FindFirstChildOfClass("Humanoid") then
@@ -253,14 +261,5 @@ RunService.RenderStepped:Connect(function()
                 lPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
             end
         end
-    end
-end)
-
-flyBtn.MouseButton1Click:Connect(function()
-    flying = not flying
-    if flying then
-        flyBtn.Text = "FLY: ACTIVE" flyBtn.TextColor3 = Color3.fromRGB(60, 200, 60)
-    else
-        flyBtn.Text = "FLY: OFF" flyBtn.TextColor3 = Color3.fromRGB(200, 60, 60)
     end
 end)
