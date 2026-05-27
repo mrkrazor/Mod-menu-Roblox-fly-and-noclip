@@ -184,8 +184,10 @@ end)
 
 RunService.Stepped:Connect(function()
     if (flying or noclip) and lPlayer.Character then
-        for _, part in pairs(lPlayer.Character:GetDescendants()) do
-            if part:IsA("BasePart") then part.CanCollide = false end
+        for _, part in pairs(lPlayer.Character:GetChildren()) do
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then 
+                part.CanCollide = false 
+            end
         end
     end
 end)
@@ -196,6 +198,11 @@ noclipBtn.MouseButton1Click:Connect(function()
         noclipBtn.Text = "NOCLIP: ACTIVE" noclipBtn.TextColor3 = Color3.fromRGB(60, 200, 60)
     else
         noclipBtn.Text = "NOCLIP: OFF" noclipBtn.TextColor3 = Color3.fromRGB(200, 60, 60)
+        if lPlayer.Character then
+            for _, part in pairs(lPlayer.Character:GetChildren()) do
+                if part:IsA("BasePart") then part.CanCollide = true end
+            end
+        end
     end
 end)
 
@@ -220,7 +227,7 @@ RunService.RenderStepped:Connect(function()
                 bodyGyro.Parent = hrp
             end
             
-            humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+            humanoid.PlatformStand = true
             
             local moveDirection = humanoid.MoveDirection
             local velocityVector = Vector3.new(0, 0, 0)
@@ -253,12 +260,9 @@ flyBtn.MouseButton1Click:Connect(function()
         if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
         if lPlayer.Character and lPlayer.Character:FindFirstChildOfClass("Humanoid") then
             local humanoid = lPlayer.Character:FindFirstChildOfClass("Humanoid")
-            humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-            humanoid.WalkSpeed = 16
-            humanoid.JumpPower = 50
-            humanoid.JumpHeight = 7.2
-            if lPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                lPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+            humanoid.PlatformStand = false
+            for _, part in pairs(lPlayer.Character:GetChildren()) do
+                if part:IsA("BasePart") then part.CanCollide = true end
             end
         end
     end
