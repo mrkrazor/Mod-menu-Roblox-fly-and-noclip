@@ -244,7 +244,14 @@ RunService.RenderStepped:Connect(function()
         if bodyVelocity then bodyVelocity:Destroy() bodyVelocity = nil end
         if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
         if lPlayer.Character and lPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            lPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.GettingUp)
+            local humanoid = lPlayer.Character:FindFirstChildOfClass("Humanoid")
+            humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+            humanoid.WalkSpeed = 16
+            humanoid.JumpPower = 50
+            humanoid.JumpHeight = 7.2
+            if lPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                lPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+            end
         end
     end
 end)
