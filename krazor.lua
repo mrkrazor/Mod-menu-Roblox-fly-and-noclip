@@ -15,7 +15,7 @@ local function roundCorners(instance, radius)
 end
 
 ---------------------------------------------------------
--- ІНТЕРФЕЙС
+-- ІНТЕРФЕЙС (Чистий титул, як ти просив)
 ---------------------------------------------------------
 local mainFrame = Instance.new("Frame", screenGui)
 mainFrame.Size = UDim2.new(0, 200, 0, 275)
@@ -41,7 +41,7 @@ topBarMask.BorderSizePixel = 0
 local title = Instance.new("TextLabel", topBar)
 title.Size = UDim2.new(1, -10, 1, 0)
 title.Position = UDim2.new(0, 10, 0, 0)
-title.Text = "FLY AND NOCLIP"
+title.Text = "Fly and noclip"
 title.TextColor3 = Color3.fromRGB(220, 220, 220)
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Font = Enum.Font.Code
@@ -49,7 +49,7 @@ title.TextSize = 13
 title.BackgroundTransparency = 1
 
 ---------------------------------------------------------
--- НАЛАШТУВАННЯ
+-- КНОПКИ ТА НАЛАШТУВАННЯ
 ---------------------------------------------------------
 local flying = false
 local noclip = false
@@ -128,8 +128,9 @@ mobileDown.TextSize = 13
 roundCorners(mobileDown, 6)
 
 ---------------------------------------------------------
--- ДИЗАЙНЕРСЬКИЙ CFRAME-ПОЛІТ БЕЗ ПАДІНЬ ТА З ПОЗОЮ IDLE
+-- ПОТУЖНА СИСТЕМА УТРИМАННЯ ВИСОТИ
 ---------------------------------------------------------
+local bodyVelocity, bodyGyro
 
 speedUp.MouseButton1Click:Connect(function()
     flySpeed = math.min(flySpeed + 10, 500)
@@ -164,7 +165,7 @@ mobileDown.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then downPressed = false end
 end)
 
--- Ноукліп (обов'язковий для флай-моду)
+-- Жорсткий Ноукліп (захищає від застрягання в текстурах при флай-моді)
 RunService.Stepped:Connect(function()
     if (flying or noclip) and lPlayer.Character then
         for _, part in pairs(lPlayer.Character:GetDescendants()) do
@@ -182,38 +183,60 @@ noclipBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Жорсткий рендер позиції без падінь
-RunService.RenderStepped:Connect(function(dt)
+-- ОСНОВНИЙ ЦИКЛ ПОЛЬОТУ
+RunService.RenderStepped:Connect(function()
     if flying and lPlayer.Character and lPlayer.Character:FindFirstChild("HumanoidRootPart") then
         local hrp = lPlayer.Character.HumanoidRootPart
         local humanoid = lPlayer.Character:FindFirstChildOfClass("Humanoid")
         local camera = workspace.CurrentCamera
         
         if humanoid and camera then
-            -- Жорстко обнуляємо гравітаційну швидкість кожну частку секунди
-            hrp.Velocity = Vector3.new(0, 0, 0)
+            -- Створюємо об'єкти левітації, якщо їх немає
+            if not bodyVelocity then
+                bodyVelocity = Instance.new("BodyVelocity")
+                bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9) -- Максимальна сила проти гравітації
+                bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+                bodyVelocity.Parent = hrp
+            end
+            
+            if not bodyGyro then
+                bodyGyro = Instance.new("BodyGyro")
+                bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9) -- Утримує тіло рівно
+                bodyGyro.CFrame = hrp.CFrame
+                bodyGyro.Parent = hrp
+            end
+            
+          
+            humanoid:ChangeState(Enum.HumanoidStateType.Physics)
             
             local moveDirection = humanoid.MoveDirection
-            local displacement = Vector3.new(0, 0, 0)
+            local velocityVector = Vector3.new(0, 0, 0)
             
-            -- Летимо ТІЛЬКИ коли є вектор руху від WASD/джойстика
+       
             if moveDirection.Magnitude > 0 then
                 local cameraCFrame = camera.CFrame
                 local localMove = cameraCFrame:VectorToObjectSpace(moveDirection)
                 
-                -- Напрямок польоту ідеально за нахилом камери
-                displacement = (cameraCFrame.LookVector * -localMove.Z + cameraCFrame.RightVector * localMove.X).Unit * flySpeed * dt
+                
+                velocityVector = (cameraCFrame.LookVector * -localMove.Z + cameraCFrame.RightVector * localMove.X).Unit * flySpeed
             end
             
-            -- Кнопки висоти
-            if upPressed then displacement = displacement + Vector3.new(0, flySpeed * dt, 0) end
-            if downPressed then displacement = displacement + Vector3.new(0, -flySpeed * dt, 0) end
+          
+            if upPressed then velocityVector = velocityVector + Vector3.new(0, flySpeed, 0) end
+            if downPressed then velocityVector = velocityVector + Vector3.new(0, -flySpeed, 0) end
+           
+            bodyVelocity.Velocity = velocityVector
             
-            -- Переміщуємо CFrame. Залишаємо кут нахилу тіла рівним (щоб персонаж стояв вертикально)
-            local targetRotation = camera.CFrame.Rotation
-            local _, yAngle, _ = targetRotation:ToEulerAnglesYXZ()
-            
-            hrp.CFrame = CFrame.new(hrp.Position + displacement) * CFrame.Angles(0, yAngle, 0)
+           
+            local lookAt = camera.CFrame.LookVector
+            bodyGyro.CFrame = CFrame.new(hrp.Position, Vector3.new(hrp.Position.X + lookAt.X, hrp.Position.Y, hrp.Position.Z + lookAt.Z))
+        end
+    else
+      
+        if bodyVelocity then bodyVelocity:Destroy() bodyVelocity = nil end
+        if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
+        if lPlayer.Character and lPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            lPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.GettingUp)
         end
     end
 end)
@@ -224,8 +247,5 @@ flyBtn.MouseButton1Click:Connect(function()
         flyBtn.Text = "FLY: ACTIVE"; flyBtn.TextColor3 = Color3.fromRGB(50, 180, 50)
     else
         flyBtn.Text = "FLY: OFF"; flyBtn.TextColor3 = Color3.fromRGB(180, 50, 50)
-        if lPlayer.Character and lPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            lPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
-        end
     end
 end)
